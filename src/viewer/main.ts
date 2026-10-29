@@ -77,6 +77,7 @@ const els = {
   settingsBtn: $<HTMLButtonElement>('settings-btn'),
   settingsPane: $('settings'),
   settingsClose: $<HTMLButtonElement>('settings-close'),
+  qFocus: $<HTMLButtonElement>('q-focus'),
   qToc: $<HTMLButtonElement>('q-toc'),
   qFontDown: $<HTMLButtonElement>('q-font-down'),
   qFontUp: $<HTMLButtonElement>('q-font-up'),
@@ -1228,6 +1229,7 @@ function setFocus(on: boolean): void {
 }
 
 els.focusBtn.addEventListener('click', () => setFocus(true));
+els.qFocus.addEventListener('click', () => setFocus(true));
 els.focusSection.addEventListener('click', () => void update({ focusUnit: 'section' }));
 els.focusParagraph.addEventListener('click', () => void update({ focusUnit: 'paragraph' }));
 els.focusFade.addEventListener('input', () => void update({ focusFade: Number(els.focusFade.value) }));
