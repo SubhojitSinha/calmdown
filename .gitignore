@@ -8,6 +8,9 @@ coverage/
 *.crx
 *.pem
 
+# Large source image; the README uses the SVG
+branding/*.png
+
 # Local env and editor/OS files
 .env
 .env.*

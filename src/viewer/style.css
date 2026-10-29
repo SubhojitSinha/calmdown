@@ -178,6 +178,9 @@ button:hover:not(:disabled), select:hover:not(:disabled) { border-color: var(--a
 button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 select:disabled, button:disabled { opacity: 0.5; cursor: default; }
 #status { color: var(--muted); font-size: 13px; white-space: nowrap; }
+#brand { flex: none; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: var(--muted); user-select: none; }
+#brand img { width: 32px; height: 32px; }
+@media (max-width: 600px) { #brand { font-size: 0; gap: 0; } }
 #menu-toggle { font-size: 16px; line-height: 1; padding: 5px 10px; }
 #menu-toggle[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); }
 input:not([type='checkbox']) {
@@ -449,7 +452,9 @@ main { flex: 1; min-width: 0; padding: 32px 24px 96px; }
 #quick { display: flex; align-items: center; gap: 6px; }
 #quick :is(button, select) { height: 22px; padding: 0 6px; font-size: 12px; color: var(--muted); }
 #quick :is(button, select):hover { color: var(--fg); }
-#quick #q-toc[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); }
+#quick :is(#q-toc, #q-read)[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); }
+#quick #q-read { min-width: 6.5em; }
+#quick #q-read-stop[hidden] { display: none; }
 #quick .q-size { display: inline-flex; align-items: center; gap: 4px; }
 #quick output { min-width: 2.8em; text-align: center; }
 @media (max-width: 760px) { #quick { display: none; } }
@@ -701,6 +706,13 @@ main { flex: 1; min-width: 0; padding: 32px 24px 96px; }
 
 @media (prefers-reduced-motion: reduce) {
   .md details.section > summary::before { transition: none; }
+}
+
+/* Read aloud: the block being read */
+.md .reading {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 4px;
 }
 
 /* Focus mode: no bars, the text centred, everything but the current section faded */

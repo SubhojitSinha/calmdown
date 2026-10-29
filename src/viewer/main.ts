@@ -78,6 +78,11 @@ const els = {
   settingsPane: $('settings'),
   settingsClose: $<HTMLButtonElement>('settings-close'),
   qFocus: $<HTMLButtonElement>('q-focus'),
+  qRead: $<HTMLButtonElement>('q-read'),
+  qReadStop: $<HTMLButtonElement>('q-read-stop'),
+  ttsVoice: $<HTMLSelectElement>('tts-voice'),
+  ttsRate: $<HTMLInputElement>('tts-rate'),
+  ttsRateVal: $('tts-rate-val'),
   qToc: $<HTMLButtonElement>('q-toc'),
   qFontDown: $<HTMLButtonElement>('q-font-down'),
   qFontUp: $<HTMLButtonElement>('q-font-up'),
@@ -180,6 +185,7 @@ function show(loaded: LoadedFile, keepScroll: boolean, text = loaded.text): void
   const y = window.scrollY;
   // renderMarkdown sanitizes with DOMPurify, so this is the one place HTML enters the DOM.
   footnotes.close();
+  stopReading();
   els.content.innerHTML = renderMarkdown(text, current?.url);
   // Counted before line numbers and copy buttons are added, so only the document's own text counts.
   const plain = (els.content.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -1200,10 +1206,11 @@ new ResizeObserver(() => {
 // Focus mode: no bars, and everything but the section at the reading line is faded.
 // The reading line is 40% down the window; the section is the innermost one there.
 // Both the section and the block (paragraph, list, code, table…) at the reading line are marked;
-// the "Highlight" setting decides in CSS which of the two stays bright.
+// the "Highlight" setting decides in CSS which of the two stays bright. While reading aloud, the
+// block being read is the reading line.
 function markFocus(): void {
   const box = els.content.getBoundingClientRect();
-  const at = document.elementFromPoint(box.left + box.width / 2, window.innerHeight * 0.4);
+  const at = readBlock ?? document.elementFromPoint(box.left + box.width / 2, window.innerHeight * 0.4);
   const marks: [string, Element | null][] = [
     ['focus-current', at?.closest('details.section') ?? null],
     ['focus-block', at?.closest('.section-body > :not(details), details.section > summary, .md > :not(details)') ?? null],
@@ -1247,6 +1254,141 @@ document.addEventListener('keydown', (e) => {
     setFocus(!focusOn);
   }
 });
+
+// Read aloud with the browser's own speech voices, so nothing is downloaded. Blocks are read in
+// order from the first one on screen; code, math, diagrams and footnotes are skipped, and so are
+// collapsed sections. Each block is spoken in short pieces because Chrome cuts off long ones.
+const READ_BLOCKS = 'h1,h2,h3,h4,h5,h6,p,li,tr,dt,dd';
+const READ_SKIP = 'pre,.code-block,.math,.mermaid-diagram,.footnote-ref,.footnotes,.copy,.gutter';
+let readBlocks: HTMLElement[] = [];
+let readBlock: HTMLElement | null = null;
+/** Bumped on every start and stop, so speech callbacks from an earlier run do nothing. */
+let readRun = 0;
+let readState: 'idle' | 'playing' | 'paused' = 'idle';
+/** Kept so Chrome does not garbage-collect them mid-speech, which drops their end event. */
+let readPieces: SpeechSynthesisUtterance[] = [];
+
+/** A block's own text: nested blocks are read on their own, table cells are joined by commas. */
+function blockText(el: Element): string {
+  if (el.tagName === 'TR') return [...el.children].map(blockText).join(', ');
+  const copy = el.cloneNode(true) as Element;
+  for (const n of copy.querySelectorAll(`${READ_BLOCKS},${READ_SKIP}`)) n.remove();
+  return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/** A voice on this computer in the browser's language, unless one is chosen in Settings. */
+function readVoice(): SpeechSynthesisVoice | undefined {
+  const voices = speechSynthesis.getVoices();
+  const chosen = settings.ttsVoice && voices.find((v) => v.voiceURI === settings.ttsVoice);
+  if (chosen) return chosen;
+  const lang = navigator.language.slice(0, 2).toLowerCase();
+  const local = voices.filter((v) => v.localService && v.lang.toLowerCase().startsWith(lang));
+  return local.find((v) => v.default) ?? local[0];
+}
+
+function setReadState(state: typeof readState): void {
+  readState = state;
+  els.qRead.textContent = state === 'playing' ? 'Pause' : state === 'paused' ? 'Resume' : 'Read aloud';
+  els.qRead.setAttribute('aria-pressed', String(state !== 'idle'));
+  els.qReadStop.hidden = state === 'idle';
+}
+
+function readAt(i: number, run: number): void {
+  if (run !== readRun) return;
+  readBlock?.classList.remove('reading');
+  const block = readBlocks[i];
+  if (!block) {
+    stopReading();
+    return;
+  }
+  readBlock = block;
+  block.classList.add('reading');
+  const r = block.getBoundingClientRect();
+  if (r.top < 60 || r.bottom > window.innerHeight - 40) block.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  if (document.documentElement.dataset.focus === 'on') markFocus();
+  // Sentences, packed into pieces of up to about 220 characters; a longer sentence is split at spaces.
+  const pieces: string[] = [];
+  for (const s of blockText(block).match(/[^.!?]+[.!?]*\s*/g) ?? []) {
+    const last = pieces.length - 1;
+    if (last >= 0 && pieces[last]!.length + s.length <= 220) pieces[last] += s;
+    else pieces.push(...(s.match(/.{1,220}(\s|$)/g) ?? [s]));
+  }
+  const voice = readVoice();
+  readPieces = pieces.map((text, n) => {
+    const u = new SpeechSynthesisUtterance(text);
+    if (voice) {
+      u.voice = voice;
+      u.lang = voice.lang;
+    }
+    u.rate = settings.ttsRate;
+    if (n === pieces.length - 1) {
+      u.onend = () => readAt(i + 1, run);
+      u.onerror = (e) => {
+        if (e.error !== 'interrupted' && e.error !== 'canceled') readAt(i + 1, run);
+      };
+    }
+    speechSynthesis.speak(u);
+    return u;
+  });
+}
+
+function startReading(): void {
+  if (!current) return;
+  // resume() too: after a pause, Chrome keeps new speech paused until it is resumed.
+  speechSynthesis.cancel();
+  speechSynthesis.resume();
+  readBlocks = [...els.content.querySelectorAll<HTMLElement>(READ_BLOCKS)].filter(
+    (el) => !el.closest('pre, .math, .mermaid-diagram, .footnotes') && el.getClientRects().length > 0 && blockText(el) !== '',
+  );
+  // Start at the first block that is not hidden above the top bar: where the reader is.
+  const first = readBlocks.findIndex((b) => b.getBoundingClientRect().bottom > 60);
+  setReadState('playing');
+  readAt(Math.max(0, first), ++readRun);
+}
+
+function stopReading(): void {
+  readRun++;
+  if (readState !== 'idle') speechSynthesis.cancel();
+  readBlock?.classList.remove('reading');
+  readBlock = null;
+  readPieces = [];
+  setReadState('idle');
+}
+
+// macOS sound-effect voices, left out of the list.
+const NOVELTY_VOICES = new Set(['Albert', 'Bad News', 'Bahh', 'Bells', 'Boing', 'Bubbles', 'Cellos', 'Good News', 'Jester', 'Organ', 'Superstar', 'Trinoids', 'Whisper', 'Wobble', 'Zarvox']);
+
+function fillVoices(): void {
+  const lang = navigator.language.slice(0, 2).toLowerCase();
+  const rank = (v: SpeechSynthesisVoice) => (v.localService ? 0 : 2) + (v.lang.toLowerCase().startsWith(lang) ? 0 : 1);
+  const voices = speechSynthesis
+    .getVoices()
+    .filter((v) => !NOVELTY_VOICES.has(v.name))
+    .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+  els.ttsVoice.replaceChildren(
+    new Option('Default (on this computer)', ''),
+    ...voices.map((v) => new Option(`${v.name} (${v.lang}${v.localService ? '' : ', online'})`, v.voiceURI)),
+  );
+  els.ttsVoice.value = settings?.ttsVoice ?? '';
+}
+
+els.qRead.addEventListener('click', () => {
+  if (readState === 'idle') startReading();
+  else if (readState === 'playing') {
+    speechSynthesis.pause();
+    setReadState('paused');
+  } else {
+    speechSynthesis.resume();
+    setReadState('playing');
+  }
+});
+els.qReadStop.addEventListener('click', stopReading);
+els.ttsVoice.addEventListener('change', () => void update({ ttsVoice: els.ttsVoice.value }));
+els.ttsRate.addEventListener('input', () => void update({ ttsRate: Number(els.ttsRate.value) }));
+// Voices load in the background; the list fills when they arrive.
+speechSynthesis.addEventListener('voiceschanged', fillVoices);
+fillVoices();
+window.addEventListener('pagehide', () => speechSynthesis.cancel());
 
 // Print / PDF: print styles are in style.css. Collapsed sections and the footnotes are opened
 // for the printout and closed again afterwards.
@@ -1362,6 +1504,9 @@ function showSettings(): void {
   els.focusFade.value = String(settings.focusFade);
   els.focusFadeVal.textContent = `${Math.round(settings.focusFade * 100)}%`;
   els.focusKeep.checked = settings.focusKeep;
+  els.ttsVoice.value = settings.ttsVoice;
+  els.ttsRate.value = String(settings.ttsRate);
+  els.ttsRateVal.textContent = `${settings.ttsRate.toFixed(1)}x`;
   els.font.value = settings.font;
   els.lineHeight.value = String(settings.lineHeight);
   els.lineHeightVal.textContent = settings.lineHeight.toFixed(2);

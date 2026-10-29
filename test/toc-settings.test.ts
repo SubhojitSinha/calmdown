@@ -75,6 +75,14 @@ describe('settings', () => {
     expect(clampSettings({}).codeBg).toBe('');
     expect(clampSettings({ codeBg: '#202020', codeFg: 'url(x)' })).toMatchObject({ codeBg: '#202020', codeFg: '' });
   });
+
+  it('keeps read aloud speed in range and the voice as text', () => {
+    expect(clampSettings({})).toMatchObject({ ttsVoice: '', ttsRate: 1 });
+    expect(clampSettings({ ttsRate: 5 }).ttsRate).toBe(2);
+    expect(clampSettings({ ttsRate: 0.1 }).ttsRate).toBe(0.5);
+    expect(clampSettings({ ttsVoice: 42 as never }).ttsVoice).toBe('');
+    expect(clampSettings({ ttsVoice: 'com.apple.voice.compact.en-GB.Daniel' }).ttsVoice).toBe('com.apple.voice.compact.en-GB.Daniel');
+  });
 });
 
 describe('eol detection', () => {

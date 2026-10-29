@@ -1,3 +1,5 @@
+<p align="center"><img src="branding/Calmdown-branding.svg" width="220" alt="Calmdown logo"></p>
+
 # Calmdown
 
 Calm, focused reading for Markdown.
@@ -21,7 +23,8 @@ Calmdown is a Chrome extension that shows `.md` files as a clean, easy to read p
 - Eight themes: GitHub, Dracula and Monokai (each in light and dark), Sepia and System. Three page widths and adjustable text size.
 - Text style: Google Fonts for text and headings, line, letter and paragraph spacing, and colours for headings, bold text, inline code and highlights.
 - Focus mode hides the top and bottom bars and fades everything except the section or paragraph you are reading.
-- A bottom bar shows the number of headings, characters, reading time, task progress and how far you have read. Its quick buttons (focus mode, theme, width, text size, table of contents) change only the current tab.
+- Read aloud reads the page to you, starting from where you are, and highlights the part being read. Code, math and diagrams are skipped. It uses the voices already on your computer, and you can pick the voice and speed in Settings.
+- A bottom bar shows the number of headings, characters, reading time, task progress and how far you have read. Its quick buttons (focus mode, read aloud, theme, width, text size, table of contents) change only the current tab.
 
 **Markdown support**
 - Code colouring (the language is guessed if a block does not say), line numbers and a Copy button.
@@ -106,7 +109,8 @@ If you downloaded a ZIP, replace the files in your old folder with the ones from
 
 1. Click the Calmdown button in the toolbar to open it.
 2. Open the menu (top left) and choose **Open file** or **Open folder**, or drop a `.md` file onto the page. `test/fixtures-sample.md` is a good file to start with.
-3. Open **Settings** from the same menu to change the theme, fonts, spacing, colours and focus mode.
+3. Open **Settings** from the same menu to change the theme, fonts, spacing, colours, focus mode and read aloud voice.
+4. To listen instead of read, click **Read aloud** in the bottom bar. The same button pauses and resumes, and **Stop** ends it.
 
 To read an online Markdown file, just open its address, for example a raw file on GitHub. Calmdown opens it and asks for access to that site the first time.
 
@@ -124,6 +128,7 @@ To read an online Markdown file, just open its address, for example a raw file o
 Everything happens in your browser. Calmdown has no server and does not send your files anywhere. It only goes online when you ask it to:
 - **Online Markdown links** are downloaded from their own website. Calmdown asks for access to each website the first time, using Chrome's normal prompt.
 - **Google Fonts** are loaded only if you pick a font in Settings.
+- **Read aloud** uses the voices on your computer by default. If you pick a voice marked "online" in Settings, the text is sent to that voice's provider to be spoken.
 
 Permissions Calmdown asks for:
 - `storage`: to save your settings.
@@ -137,6 +142,8 @@ Permissions Calmdown asks for:
 - **Local `.md` links or dropped files don't open in Calmdown**: turn on **Allow access to file URLs** (step 4 above).
 - **An online file doesn't load**: allow access when Chrome asks. If you said no before, open the link again to see the prompt again.
 - **Changes don't show up after updating**: run `npm run build` again, reload the extension on `chrome://extensions`, then reload any open Calmdown tabs.
+- **Read aloud sounds robotic or there are few voices**: voices come from your computer. On a Mac you can add better ones in System Settings, under Accessibility, Spoken Content.
+- **No Stop button in focus mode**: focus mode hides the bottom bar. Press Esc to leave focus mode, then use Pause or Stop.
 - **Edit is greyed out**: you can edit local files opened from the Calmdown menu or dropped onto the Calmdown page. Online links and files opened from `file://` addresses are read-only. Hover over the **Read-only** label to see why.
 
 ## Development

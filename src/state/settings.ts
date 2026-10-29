@@ -32,6 +32,9 @@ export interface Settings {
   focusFade: number;
   focusKeep: boolean;
   focusActive: boolean;
+  // Read aloud: a speech voice's voiceURI ('' picks a voice on this computer) and speed (0.5–2).
+  ttsVoice: string;
+  ttsRate: number;
 }
 
 export const DEFAULTS: Settings = {
@@ -55,6 +58,8 @@ export const DEFAULTS: Settings = {
   focusFade: 0.78,
   focusKeep: false,
   focusActive: false,
+  ttsVoice: '',
+  ttsRate: 1,
 };
 /** Family names are letters, digits and spaces; anything else is dropped rather than put in a URL. */
 const FONT_NAME = /^[A-Za-z0-9 ]{1,60}$/;
@@ -91,6 +96,8 @@ export function clampSettings(raw: Partial<Settings> | undefined): Settings {
     focusFade: between(s.focusFade, 0.4, 0.95, DEFAULTS.focusFade),
     focusKeep: s.focusKeep === true,
     focusActive: s.focusKeep === true && s.focusActive === true,
+    ttsVoice: typeof s.ttsVoice === 'string' ? s.ttsVoice.slice(0, 300) : '',
+    ttsRate: between(s.ttsRate, 0.5, 2, DEFAULTS.ttsRate),
   };
 }
 

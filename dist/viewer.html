@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Calmdown</title>
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
-    <script type="module" crossorigin src="./assets/viewer-CMkhIWXy.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/viewer-UrZyzlnj.css">
+    <script type="module" crossorigin src="./assets/viewer-JLVOY-lP.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/viewer-z0cmWolt.css">
   </head>
   <body>
     <header id="bar">
@@ -16,6 +16,7 @@
       <span class="spacer"></span>
       <button id="save" type="button" hidden>Save</button>
       <span id="status" role="status" aria-live="polite"></span>
+      <span id="brand">Calmdown<img src="./icons/icon.svg" alt="" aria-hidden="true" /></span>
     </header>
     <nav id="menu" hidden aria-label="Menu">
       <button class="menu-item" id="open" type="button">Open file…</button>
@@ -84,6 +85,17 @@
           <div class="range"><input type="range" id="focus-fade" min="0.4" max="0.95" step="0.01" /><output for="focus-fade" id="focus-fade-val"></output></div>
         </div>
         <label class="setting check" title="When on, focus mode comes back after reloading the page"><span>Stay on after reload</span><input type="checkbox" id="focus-keep" /></label>
+      </section>
+      <section class="menu-group" data-reset="ttsVoice,ttsRate">
+        <div class="group-head"><h3>Read aloud</h3><button type="button" class="reset-group" title="Reset Read aloud to defaults" aria-label="Reset Read aloud to defaults">↺</button></div>
+        <div class="setting">
+          <label for="tts-voice">Voice</label>
+          <select id="tts-voice" title="Online voices send the text to the voice provider to be spoken"></select>
+        </div>
+        <div class="setting">
+          <label for="tts-rate">Speed</label>
+          <div class="range"><input type="range" id="tts-rate" min="0.5" max="2" step="0.1" /><output for="tts-rate" id="tts-rate-val"></output></div>
+        </div>
       </section>
       <section class="menu-group" data-reset="autosave">
         <div class="group-head"><h3>Editing</h3><button type="button" class="reset-group" title="Reset Editing to defaults" aria-label="Reset Editing to defaults">↺</button></div>
@@ -198,6 +210,8 @@
       <span class="spacer"></span>
       <div id="quick" title="Quick changes for this tab only. Settings keeps your saved defaults.">
         <button id="q-focus" type="button" title="Focus mode: hide the bars and fade all but what you're reading. Esc to leave">Focus</button>
+        <button id="q-read" type="button" title="Read aloud from where you are. Code, math and diagrams are skipped">Read aloud</button>
+        <button id="q-read-stop" type="button" hidden aria-label="Stop reading" title="Stop reading">Stop</button>
         <button id="q-toc" type="button" aria-pressed="true" title="Show or hide the index (this tab only)">Index</button>
         <span class="q-size">
           <button id="q-font-down" type="button" aria-label="Smaller text (this tab only)">A−</button>
