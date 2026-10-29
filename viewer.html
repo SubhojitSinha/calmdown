@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calmdown</title>
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <header id="bar">
+      <button id="menu-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="menu">☰</button>
+      <span id="file-name"></span>
+      <span id="readonly" hidden>Read-only</span>
+      <span class="spacer"></span>
+      <button id="save" type="button" hidden>Save</button>
+      <span id="status" role="status" aria-live="polite"></span>
+    </header>
+    <nav id="menu" hidden aria-label="Menu">
+      <button class="menu-item" id="open" type="button">Open file…</button>
+      <button class="menu-item" id="open-folder" type="button" title="Browse and search all markdown files in a folder">Open folder…</button>
+      <button class="menu-item" id="go-to-file" type="button"><span>Recent files &amp; go to file…</span><kbd data-keys="mod+K"></kbd></button>
+      <hr />
+      <button class="menu-item" id="edit" type="button" disabled>Edit file</button>
+      <button class="menu-item" id="expand-all" type="button" disabled>Expand all sections</button>
+      <button class="menu-item" id="collapse-all" type="button" disabled>Collapse all sections</button>
+      <button class="menu-item" id="focus-btn" type="button" title="Hide the bars and fade all but what you're reading"><span>Focus mode</span><kbd data-keys="alt+F"></kbd></button>
+      <button class="menu-item" id="print-btn" type="button" title="Print, or choose “Save as PDF” in the print dialog"><span>Print / PDF…</span><kbd data-keys="mod+P"></kbd></button>
+      <hr />
+      <button class="menu-item" id="settings-btn" type="button" aria-expanded="false" aria-controls="settings"><span>Settings</span><span class="chev" aria-hidden="true">›</span></button>
+    </nav>
+    <aside id="settings" hidden aria-label="Settings">
+      <div class="settings-head">
+        <h2>Settings</h2>
+        <button id="settings-close" type="button" aria-label="Close settings">×</button>
+      </div>
+      <p class="settings-note">Saved for all sessions. The quick controls in the footer change only this tab.</p>
+      <section class="menu-group" data-reset="theme,width,fontSize,showToc,lineNumbers">
+        <div class="group-head"><h3>View</h3><button type="button" class="reset-group" title="Reset View to defaults" aria-label="Reset View to defaults">↺</button></div>
+        <div class="setting">
+          <label for="theme">Theme</label>
+          <select id="theme">
+            <option value="system">System</option>
+            <option value="light">GitHub Light</option>
+            <option value="dark">GitHub Dark</option>
+            <option value="dracula-light">Dracula Light</option>
+            <option value="dracula">Dracula Dark</option>
+            <option value="monokai-light">Monokai Light</option>
+            <option value="monokai">Monokai Dark</option>
+            <option value="sepia">Sepia</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label for="width">Reading width</label>
+          <select id="width">
+            <option value="680">Narrow</option>
+            <option value="820">Medium</option>
+            <option value="1100">Wide</option>
+          </select>
+        </div>
+        <div class="setting">
+          <span>Text size</span>
+          <div class="stepper">
+            <button id="font-down" type="button" aria-label="Smaller text">A−</button>
+            <output id="font-size-val" aria-live="polite"></output>
+            <button id="font-up" type="button" aria-label="Larger text">A+</button>
+          </div>
+        </div>
+        <label class="setting check"><span>Show index</span><input type="checkbox" id="show-toc" /></label>
+        <label class="setting check"><span>Line numbers in code</span><input type="checkbox" id="line-numbers" /></label>
+      </section>
+      <section class="menu-group" data-reset="focusUnit,focusFade,focusKeep">
+        <div class="group-head"><h3>Focus mode</h3><button type="button" class="reset-group" title="Reset Focus mode to defaults" aria-label="Reset Focus mode to defaults">↺</button></div>
+        <div class="setting">
+          <span>Highlight</span>
+          <div class="seg">
+            <button id="focus-section" type="button" aria-pressed="true">Section</button>
+            <button id="focus-paragraph" type="button" aria-pressed="false">Paragraph</button>
+          </div>
+        </div>
+        <div class="setting">
+          <label for="focus-fade">Fade others</label>
+          <div class="range"><input type="range" id="focus-fade" min="0.4" max="0.95" step="0.01" /><output for="focus-fade" id="focus-fade-val"></output></div>
+        </div>
+        <label class="setting check" title="When on, focus mode comes back after reloading the page"><span>Stay on after reload</span><input type="checkbox" id="focus-keep" /></label>
+      </section>
+      <section class="menu-group" data-reset="autosave">
+        <div class="group-head"><h3>Editing</h3><button type="button" class="reset-group" title="Reset Editing to defaults" aria-label="Reset Editing to defaults">↺</button></div>
+        <label class="setting check" title="Save a couple of seconds after you stop typing, without asking"><span>Autosave while editing</span><input type="checkbox" id="autosave" /></label>
+      </section>
+      <section class="menu-group" data-reset="font,headingFont,lineHeight,letterSpacing,paraSpacing">
+        <div class="group-head"><h3>Text style</h3><button type="button" class="reset-group" title="Reset Text style to defaults" aria-label="Reset Text style to defaults">↺</button></div>
+        <div class="setting">
+          <label for="font">Font</label>
+          <input id="font" list="font-list" placeholder="System" title="Any Google Fonts family, e.g. Inter or Lora. Empty: system font." />
+        </div>
+        <div class="setting">
+          <label for="heading-font">Heading font</label>
+          <input id="heading-font" list="font-list" placeholder="Same as text" title="Any Google Fonts family for headings. Empty: same as the text." />
+        </div>
+        <datalist id="font-list">
+          <option value="Inter"></option>
+          <option value="Roboto"></option>
+          <option value="Open Sans"></option>
+          <option value="Lato"></option>
+          <option value="Nunito"></option>
+          <option value="IBM Plex Sans"></option>
+          <option value="Merriweather"></option>
+          <option value="Lora"></option>
+          <option value="Literata"></option>
+          <option value="Source Serif 4"></option>
+          <option value="Noto Serif"></option>
+          <option value="JetBrains Mono"></option>
+        </datalist>
+        <div class="setting">
+          <label for="line-height">Line spacing</label>
+          <div class="range"><input type="range" id="line-height" min="1.2" max="2.4" step="0.05" /><output for="line-height" id="line-height-val"></output></div>
+        </div>
+        <div class="setting">
+          <label for="letter-spacing">Letter spacing</label>
+          <div class="range"><input type="range" id="letter-spacing" min="0" max="0.1" step="0.005" /><output for="letter-spacing" id="letter-spacing-val"></output></div>
+        </div>
+        <div class="setting">
+          <label for="para-spacing">Paragraph spacing</label>
+          <div class="range"><input type="range" id="para-spacing" min="0.4" max="2.5" step="0.1" /><output for="para-spacing" id="para-spacing-val"></output></div>
+        </div>
+      </section>
+      <section class="menu-group" data-reset="markColor,headingColor,boldColor,codeBg,codeFg">
+        <div class="group-head"><h3>Colours</h3><button type="button" class="reset-group" title="Reset Colours to defaults" aria-label="Reset Colours to defaults">↺</button></div>
+        <div class="setting">
+          <label for="mark-color">Highlight</label>
+          <div class="swatch"><input type="color" id="mark-color" /><button type="button" class="reset-color" data-for="markColor" title="Default colour" aria-label="Highlight: default colour">↺</button></div>
+        </div>
+        <div class="setting">
+          <label for="heading-color">Headings</label>
+          <div class="swatch"><input type="color" id="heading-color" /><button type="button" class="reset-color" data-for="headingColor" title="Use the theme colour" aria-label="Headings: use the theme colour">↺</button></div>
+        </div>
+        <div class="setting">
+          <label for="bold-color">Bold text</label>
+          <div class="swatch"><input type="color" id="bold-color" /><button type="button" class="reset-color" data-for="boldColor" title="Use the theme colour" aria-label="Bold text: use the theme colour">↺</button></div>
+        </div>
+        <div class="setting">
+          <label for="code-bg">Code background</label>
+          <div class="swatch"><input type="color" id="code-bg" /><button type="button" class="reset-color" data-for="codeBg" title="Use the theme colour" aria-label="Code background: use the theme colour">↺</button></div>
+        </div>
+        <div class="setting">
+          <label for="code-fg">Code text</label>
+          <div class="swatch"><input type="color" id="code-fg" /><button type="button" class="reset-color" data-for="codeFg" title="Use the theme colour" aria-label="Code text: use the theme colour">↺</button></div>
+        </div>
+      </section>
+    </aside>
+    <div id="layout">
+      <aside id="sidebar" data-tab="index">
+        <div id="side-tabs" role="tablist" hidden>
+          <button id="tab-files" type="button" role="tab">Files</button>
+          <button id="tab-index" type="button" role="tab">Index</button>
+        </div>
+        <div id="folder" hidden>
+          <div class="folder-head">
+            <span id="folder-name"></span>
+            <button id="folder-close" type="button" title="Close folder" aria-label="Close folder">×</button>
+          </div>
+          <input id="folder-search" type="search" placeholder="Search in folder" aria-label="Search in folder" />
+          <div id="search-results" hidden></div>
+          <ul id="folder-files"></ul>
+        </div>
+        <nav id="toc" aria-label="Index"></nav>
+      </aside>
+      <main>
+        <div id="empty">
+          <img class="watermark" src="/icons/icon.svg" alt="" aria-hidden="true" />
+          <h1>Open a markdown file</h1>
+          <p>Open the menu (☰) and click <strong>Open file</strong> or <strong>Open folder</strong>, or drop a <code>.md</code> file or a folder anywhere on this page.</p>
+        </div>
+        <div id="notice" hidden>
+          <span id="notice-text"></span>
+          <span id="notice-actions"></span>
+        </div>
+        <section id="diff" aria-label="Differences between the file on disk and your editor" hidden></section>
+        <div id="panes">
+          <div id="editor-pane" hidden></div>
+          <article id="content" class="md" hidden></article>
+        </div>
+      </main>
+    </div>
+    <button id="focus-exit" type="button" hidden title="Exit focus mode (Esc)">✕ Exit focus</button>
+    <dialog id="switcher" aria-label="Go to file">
+      <input id="switcher-input" placeholder="Go to file…" autocomplete="off" spellcheck="false" aria-label="File name" />
+      <ul id="switcher-list" role="listbox"></ul>
+      <div class="switcher-foot"><button id="recent-clear" type="button">Clear recent files</button></div>
+    </dialog>
+    <footer id="footer" hidden>
+      <span id="stat-headings"></span>
+      <span id="stat-chars"></span>
+      <span id="stat-read"></span>
+      <span id="stat-tasks" hidden></span>
+      <span class="spacer"></span>
+      <div id="quick" title="Quick changes for this tab only. Settings keeps your saved defaults.">
+        <button id="q-toc" type="button" aria-pressed="true" title="Show or hide the index (this tab only)">Index</button>
+        <span class="q-size">
+          <button id="q-font-down" type="button" aria-label="Smaller text (this tab only)">A−</button>
+          <output id="q-font-size"></output>
+          <button id="q-font-up" type="button" aria-label="Larger text (this tab only)">A+</button>
+        </span>
+        <select id="q-width" aria-label="Reading width (this tab only)"></select>
+        <select id="q-theme" aria-label="Theme (this tab only)"></select>
+      </div>
+      <div id="progress" role="progressbar" aria-label="Reading progress" aria-valuemin="0" aria-valuemax="100">
+        <div id="progress-fill"></div>
+      </div>
+      <span id="stat-progress"></span>
+    </footer>
+    <script type="module" src="/src/viewer/main.ts"></script>
+  </body>
+</html>
