@@ -251,6 +251,13 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .setting > :first-child { color: var(--fg); white-space: nowrap; }
 .setting > select, .setting > input:not([type='checkbox']) { width: 58%; }
 .setting.check { cursor: pointer; }
+/* Custom themes: buttons under the theme list, right-aligned with the controls */
+.theme-actions { display: flex; justify-content: flex-end; gap: 6px; margin: 2px 0 6px; }
+.theme-actions button { padding: 2px 8px; font-size: 12px; color: var(--muted); }
+.theme-actions button:hover { color: var(--fg); }
+.theme-actions button[hidden] { display: none; }
+#theme-note { margin: 0 0 6px; text-align: right; }
+#theme-note[hidden] { display: none; }
 .setting input[type='checkbox'] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .seg { display: flex; }
 .seg button { border-radius: 0; }

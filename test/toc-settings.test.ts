@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { collectHeadings, renderToc, slugify } from '../src/viewer/toc';
-import { clampSettings, DEFAULTS } from '../src/state/settings';
+import { clampSettings, DEFAULTS, pickTheme, withTheme } from '../src/state/settings';
 import { detectEol } from '../src/files/file-layer';
 
 describe('toc', () => {
@@ -74,6 +74,32 @@ describe('settings', () => {
     expect(clampSettings({ headingColor: '#123abc' }).headingColor).toBe('#123abc');
     expect(clampSettings({}).codeBg).toBe('');
     expect(clampSettings({ codeBg: '#202020', codeFg: 'url(x)' })).toMatchObject({ codeBg: '#202020', codeFg: '' });
+  });
+
+  it('keeps valid custom themes, checks their values and drops broken ones', () => {
+    const s = clampSettings({
+      theme: 'custom:abc',
+      customThemes: [
+        { id: 'custom:abc', name: '  Night  ', base: 'dracula', fontSize: 99, width: 1100, font: 'Lora', headingFont: '', lineHeight: 1.8, letterSpacing: 0, paraSpacing: 1, markColor: 'red', headingColor: '#ff0000', boldColor: '', codeBg: '', codeFg: '' },
+        { id: 'custom:abc', name: 'Duplicate id' } as never,
+        { id: 'bad id', name: 'Bad' } as never,
+        { id: 'custom:x1', name: '' } as never,
+        { id: 'custom:x2', name: 'Unknown base', base: 'neon' } as never,
+      ],
+    });
+    expect(s.theme).toBe('custom:abc');
+    expect(s.customThemes.map((t) => t.name)).toEqual(['Night', 'Unknown base']);
+    expect(s.customThemes[0]).toMatchObject({ base: 'dracula', fontSize: 26, width: 1100, font: 'Lora', markColor: DEFAULTS.markColor, headingColor: '#ff0000' });
+    expect(s.customThemes[1]!.base).toBe('system');
+    expect(clampSettings({ theme: 'custom:gone' }).theme).toBe(DEFAULTS.theme);
+  });
+
+  it('shows a custom theme as its base theme with its own values, and leaves other settings alone', () => {
+    const night = { id: 'custom:n', name: 'Night', base: 'dracula', ...pickTheme({ ...DEFAULTS, fontSize: 20, width: 680, boldColor: '#00ff00' }) } as const;
+    const s = withTheme(clampSettings({ theme: 'custom:n', customThemes: [night], showToc: false, fontSize: 14 }));
+    expect(s).toMatchObject({ theme: 'dracula', fontSize: 20, width: 680, boldColor: '#00ff00', showToc: false });
+    const plain = clampSettings({ theme: 'sepia', customThemes: [night], fontSize: 14 });
+    expect(withTheme(plain)).toEqual(plain);
   });
 
   it('keeps read aloud speed in range and the voice as text', () => {

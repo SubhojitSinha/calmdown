@@ -4,8 +4,20 @@ import { kvGet, kvSet } from './store';
 const THEMES = ['system', 'light', 'dark', 'sepia', 'dracula', 'dracula-light', 'monokai', 'monokai-light'] as const;
 export type ThemeName = (typeof THEMES)[number];
 
+/** What a custom theme saves on top of its base theme. The index and everything else stay global. */
+export const THEME_KEYS = [
+  'fontSize', 'width', 'font', 'headingFont', 'lineHeight', 'letterSpacing', 'paraSpacing',
+  'markColor', 'headingColor', 'boldColor', 'codeBg', 'codeFg',
+] as const;
+type ThemeValues = Pick<Settings, (typeof THEME_KEYS)[number]>;
+export type CustomTheme = ThemeValues & { id: `custom:${string}`; name: string; base: ThemeName };
+const CUSTOM_ID = /^custom:[a-z0-9]{1,20}$/;
+const MAX_CUSTOM_THEMES = 30;
+
 export interface Settings {
-  theme: ThemeName;
+  /** A built-in theme, or the id of one of `customThemes`. */
+  theme: ThemeName | CustomTheme['id'];
+  customThemes: CustomTheme[];
   fontSize: number; // px
   width: number; // content max width, px
   /** Writes edits to disk a couple of seconds after typing stops. Off until trusted. */
@@ -39,6 +51,7 @@ export interface Settings {
 
 export const DEFAULTS: Settings = {
   theme: 'system',
+  customThemes: [],
   fontSize: 17,
   width: 820,
   autosave: false,
@@ -73,10 +86,34 @@ const between = (v: unknown, min: number, max: number, fallback: number): number
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 };
 
+export const pickTheme = (s: ThemeValues): ThemeValues =>
+  Object.fromEntries(THEME_KEYS.map((k) => [k, s[k]])) as ThemeValues;
+
+/** A saved custom theme with every value checked like a normal setting; null when it is unusable. */
+function clampTheme(raw: unknown): CustomTheme | null {
+  const t = (raw ?? {}) as Partial<CustomTheme>;
+  const name = typeof t.name === 'string' ? t.name.trim().slice(0, 40) : '';
+  if (typeof t.id !== 'string' || !CUSTOM_ID.test(t.id) || !name) return null;
+  const v = clampSettings({ ...t, theme: t.base, customThemes: [] });
+  return { id: t.id, name, base: v.theme as ThemeName, ...pickTheme(v) };
+}
+
+/** The settings as shown: a custom theme's values in place, and its base theme as `theme`. */
+export function withTheme(s: Settings): Settings {
+  const t = s.customThemes.find((c) => c.id === s.theme);
+  return t ? { ...s, ...pickTheme(t), theme: t.base } : s;
+}
+
 export function clampSettings(raw: Partial<Settings> | undefined): Settings {
   const s = { ...DEFAULTS, ...(raw ?? {}) };
+  const customThemes = (Array.isArray(s.customThemes) ? s.customThemes : [])
+    .map(clampTheme)
+    .filter((t, i, all): t is CustomTheme => !!t && all.findIndex((o) => o?.id === t.id) === i)
+    .slice(0, MAX_CUSTOM_THEMES);
+  const known = [...THEMES, ...customThemes.map((t) => t.id)] as string[];
   return {
-    theme: (THEMES as readonly string[]).includes(s.theme) ? s.theme : DEFAULTS.theme,
+    theme: known.includes(s.theme) ? s.theme : DEFAULTS.theme,
+    customThemes,
     fontSize: Math.min(26, Math.max(12, Math.round(Number(s.fontSize)) || DEFAULTS.fontSize)),
     width: Math.min(1400, Math.max(560, Math.round(Number(s.width)) || DEFAULTS.width)),
     autosave: s.autosave === true,
@@ -109,7 +146,8 @@ export async function saveSettings(s: Settings): Promise<void> {
   await kvSet(KEY, s);
 }
 
-export function applySettings(s: Settings, root: HTMLElement = document.documentElement): void {
+export function applySettings(settings: Settings, root: HTMLElement = document.documentElement): void {
+  const s = withTheme(settings);
   root.dataset.theme = s.theme;
   root.style.setProperty('--font-size', `${s.fontSize}px`);
   root.style.setProperty('--content-width', `${s.width}px`);

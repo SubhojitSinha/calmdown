@@ -31,7 +31,11 @@ import {
   clampSettings,
   DEFAULTS,
   loadSettings,
+  pickTheme,
   saveSettings,
+  THEME_KEYS,
+  withTheme,
+  type CustomTheme,
   type Settings,
   type ThemeName,
 } from '../state/settings';
@@ -83,6 +87,10 @@ const els = {
   ttsVoice: $<HTMLSelectElement>('tts-voice'),
   ttsRate: $<HTMLInputElement>('tts-rate'),
   ttsRateVal: $('tts-rate-val'),
+  themeSave: $<HTMLButtonElement>('theme-save'),
+  themeRename: $<HTMLButtonElement>('theme-rename'),
+  themeDelete: $<HTMLButtonElement>('theme-delete'),
+  themeNote: $('theme-note'),
   qToc: $<HTMLButtonElement>('q-toc'),
   qFontDown: $<HTMLButtonElement>('q-font-down'),
   qFontUp: $<HTMLButtonElement>('q-font-up'),
@@ -1452,6 +1460,8 @@ els.autosave.addEventListener('change', () => {
 // Two layers: `settings` are saved for all sessions (the Settings pane); `quick` holds this tab's
 // footer changes to theme, width, text size and index, kept in sessionStorage (survives a
 // reload, not closing the tab). The page shows `quick` over `settings`.
+// Picking a theme sets text size, width, text style and colours too: a custom theme brings its own,
+// a built-in one its defaults. Footer changes to text size and width still go over it.
 type QuickKey = 'theme' | 'width' | 'fontSize' | 'showToc';
 const QUICK_KEY = 'md-reader-quick';
 let quick: Partial<Pick<Settings, QuickKey>> = {};
@@ -1460,8 +1470,36 @@ try {
 } catch {
   /* storage blocked or bad data: no quick changes */
 }
-const shown = (): Settings => clampSettings({ ...settings, ...quick });
-let shownTheme: ThemeName | undefined;
+const shown = (): Settings => {
+  const { theme, ...rest } = quick;
+  const picked = theme && { theme, ...(theme.startsWith('custom:') ? {} : pickTheme(DEFAULTS)) };
+  return clampSettings({ ...withTheme(clampSettings({ ...settings, ...picked })), ...rest });
+};
+let shownTheme: Settings['theme'] | undefined;
+const activeTheme = (): CustomTheme | undefined => settings.customThemes.find((t) => t.id === settings.theme);
+
+// Both theme lists: the built-in themes, then "My themes". Rebuilt only when the custom themes change.
+const BUILT_IN_THEMES = els.theme.innerHTML;
+let themeListKey = '';
+function fillThemes(): void {
+  const mine = [...settings.customThemes].sort((a, b) => a.name.localeCompare(b.name));
+  const key = JSON.stringify(mine.map((t) => [t.id, t.name]));
+  if (key === themeListKey) return;
+  themeListKey = key;
+  for (const select of [els.theme, els.qTheme]) {
+    select.innerHTML = BUILT_IN_THEMES;
+    if (mine.length === 0) continue;
+    const group = document.createElement('optgroup');
+    group.label = 'My themes';
+    group.append(...mine.map((t) => new Option(t.name, t.id)));
+    select.append(group);
+  }
+}
+
+/** Asks for a theme name; null when cancelled or empty. */
+function askThemeName(message: string, value: string): string | null {
+  return window.prompt(message, value)?.trim().slice(0, 40) || null;
+}
 
 function saveQuick(): void {
   try {
@@ -1480,10 +1518,11 @@ function updateQuick(next: Partial<Pick<Settings, QuickKey>>): void {
 }
 
 function showSettings(): void {
+  fillThemes();
   const view = shown();
   applySettings(view);
   // Footer quick controls show what is on screen; the Settings pane shows the saved values.
-  els.qTheme.value = view.theme;
+  els.qTheme.value = clampSettings({ ...settings, ...quick }).theme;
   els.qWidth.value = String(view.width);
   els.qFontSize.textContent = `${view.fontSize}px`;
   els.qToc.setAttribute('aria-pressed', String(view.showToc));
@@ -1492,13 +1531,17 @@ function showSettings(): void {
     show(current.loaded, true, editor?.getText());
   }
   shownTheme = view.theme;
+  // The pane shows the saved values, with a selected custom theme's own values in place.
+  const saved = withTheme(settings);
+  const custom = activeTheme();
+  els.themeRename.hidden = els.themeDelete.hidden = els.themeNote.hidden = !custom;
   els.autosave.checked = settings.autosave;
   els.theme.value = settings.theme;
-  els.width.value = String(settings.width);
+  els.width.value = String(saved.width);
   els.showToc.checked = settings.showToc;
   els.lineNumbers.checked = settings.lineNumbers;
-  els.markColor.value = settings.markColor;
-  els.fontSizeVal.textContent = `${settings.fontSize}px`;
+  els.markColor.value = saved.markColor;
+  els.fontSizeVal.textContent = `${saved.fontSize}px`;
   els.focusSection.setAttribute('aria-pressed', String(settings.focusUnit === 'section'));
   els.focusParagraph.setAttribute('aria-pressed', String(settings.focusUnit === 'paragraph'));
   els.focusFade.value = String(settings.focusFade);
@@ -1507,27 +1550,40 @@ function showSettings(): void {
   els.ttsVoice.value = settings.ttsVoice;
   els.ttsRate.value = String(settings.ttsRate);
   els.ttsRateVal.textContent = `${settings.ttsRate.toFixed(1)}x`;
-  els.font.value = settings.font;
-  els.lineHeight.value = String(settings.lineHeight);
-  els.lineHeightVal.textContent = settings.lineHeight.toFixed(2);
-  els.letterSpacing.value = String(settings.letterSpacing);
-  els.letterSpacingVal.textContent = `${settings.letterSpacing.toFixed(3)}em`;
-  els.paraSpacing.value = String(settings.paraSpacing);
-  els.paraSpacingVal.textContent = `${settings.paraSpacing.toFixed(1)}em`;
-  els.headingFont.value = settings.headingFont;
+  els.font.value = saved.font;
+  els.lineHeight.value = String(saved.lineHeight);
+  els.lineHeightVal.textContent = saved.lineHeight.toFixed(2);
+  els.letterSpacing.value = String(saved.letterSpacing);
+  els.letterSpacingVal.textContent = `${saved.letterSpacing.toFixed(3)}em`;
+  els.paraSpacing.value = String(saved.paraSpacing);
+  els.paraSpacingVal.textContent = `${saved.paraSpacing.toFixed(1)}em`;
+  els.headingFont.value = saved.headingFont;
   // A colour left to the theme shows the theme's text colour in the picker.
   const themeVar = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  els.headingColor.value = settings.headingColor || themeVar('--fg');
-  els.boldColor.value = settings.boldColor || themeVar('--fg');
-  els.codeBg.value = settings.codeBg || themeVar('--code-bg');
-  els.codeFg.value = settings.codeFg || themeVar('--fg');
+  els.headingColor.value = saved.headingColor || themeVar('--fg');
+  els.boldColor.value = saved.boldColor || themeVar('--fg');
+  els.codeBg.value = saved.codeBg || themeVar('--code-bg');
+  els.codeFg.value = saved.codeFg || themeVar('--fg');
 }
 
-/** A Settings pane change: saved for all sessions, and it takes over from a footer change to the same thing. */
+/**
+ * A Settings pane change: saved for all sessions, and it takes over from a footer change to the same
+ * thing. While a custom theme is selected (and stays selected), changes to its own values go into it.
+ */
 async function update(next: Partial<Settings>): Promise<void> {
+  const keys = Object.keys(next);
+  const custom = settings.customThemes.find((t) => t.id === (next.theme ?? settings.theme));
+  const own = Object.entries(next).filter(([k]) => (THEME_KEYS as readonly string[]).includes(k));
+  if (custom && own.length > 0) {
+    const changed = { ...custom, ...Object.fromEntries(own) };
+    next = Object.fromEntries(Object.entries(next).filter(([k]) => !(THEME_KEYS as readonly string[]).includes(k)));
+    next.customThemes = settings.customThemes.map((t) => (t === custom ? changed : t));
+  }
   settings = clampSettings({ ...settings, ...next });
   let dropped = false;
-  for (const k of Object.keys(next)) {
+  // A footer theme would hide a change made here to its text size, width, style or colours.
+  if (own.length > 0) keys.push('theme');
+  for (const k of keys) {
     if (k in quick) {
       delete quick[k as QuickKey];
       dropped = true;
@@ -1538,7 +1594,40 @@ async function update(next: Partial<Settings>): Promise<void> {
   await saveSettings(settings);
 }
 
-els.theme.addEventListener('change', () => void update({ theme: els.theme.value as ThemeName }));
+// A built-in theme starts from its defaults; a custom theme brings its own values.
+els.theme.addEventListener('change', () => {
+  const theme = els.theme.value as Settings['theme'];
+  void update(theme.startsWith('custom:') ? { theme } : { theme, ...pickTheme(DEFAULTS) });
+});
+// Saves what is on screen, footer changes included, as a custom theme and selects it.
+els.themeSave.addEventListener('click', () => {
+  const name = askThemeName('Name for this theme (text size, width, text style and colours are saved with it):', activeTheme()?.name ?? '');
+  if (!name) return;
+  const same = settings.customThemes.find((t) => t.name.toLowerCase() === name.toLowerCase());
+  if (same && !window.confirm(`Replace the theme "${same.name}"?`)) return;
+  const view = shown();
+  const theme: CustomTheme = {
+    id: same?.id ?? `custom:${Date.now().toString(36)}`,
+    name,
+    base: view.theme as ThemeName,
+    ...pickTheme(view),
+  };
+  delete quick.fontSize;
+  delete quick.width;
+  saveQuick();
+  void update({ theme: theme.id, customThemes: [...settings.customThemes.filter((t) => t !== same), theme] });
+});
+els.themeRename.addEventListener('click', () => {
+  const custom = activeTheme();
+  const name = custom && askThemeName('New name for this theme:', custom.name);
+  if (!custom || !name) return;
+  void update({ customThemes: settings.customThemes.map((t) => (t === custom ? { ...t, name } : t)) });
+});
+els.themeDelete.addEventListener('click', () => {
+  const custom = activeTheme();
+  if (!custom || !window.confirm(`Delete the theme "${custom.name}"?`)) return;
+  void update({ theme: custom.base, customThemes: settings.customThemes.filter((t) => t !== custom) });
+});
 els.showToc.addEventListener('change', () => void update({ showToc: els.showToc.checked }));
 els.width.addEventListener('change', () => void update({ width: Number(els.width.value) }));
 els.lineNumbers.addEventListener('change', () => void update({ lineNumbers: els.lineNumbers.checked }));
@@ -1563,13 +1652,18 @@ for (const b of els.settingsPane.querySelectorAll<HTMLButtonElement>('.reset-gro
 }
 // 'change' fires on Enter, on blur and when a suggestion is picked, not on every key.
 els.font.addEventListener('change', () => void update({ font: els.font.value }));
-els.fontUp.addEventListener('click', () => void update({ fontSize: settings.fontSize + 1 }));
-els.fontDown.addEventListener('click', () => void update({ fontSize: settings.fontSize - 1 }));
+els.fontUp.addEventListener('click', () => void update({ fontSize: withTheme(settings).fontSize + 1 }));
+els.fontDown.addEventListener('click', () => void update({ fontSize: withTheme(settings).fontSize - 1 }));
 
-// Footer quick controls (this tab only). Their lists are copied from the Settings pane's.
-els.qTheme.innerHTML = els.theme.innerHTML;
+// Footer quick controls (this tab only). Their lists are copied from the Settings pane's;
+// the theme list is filled by fillThemes().
 els.qWidth.innerHTML = els.width.innerHTML;
-els.qTheme.addEventListener('change', () => updateQuick({ theme: els.qTheme.value as ThemeName }));
+els.qTheme.addEventListener('change', () => {
+  // A newly picked theme brings its own text size and width (see shown()).
+  delete quick.fontSize;
+  delete quick.width;
+  updateQuick({ theme: els.qTheme.value as Settings['theme'] });
+});
 els.qWidth.addEventListener('change', () => updateQuick({ width: Number(els.qWidth.value) }));
 els.qFontUp.addEventListener('click', () => updateQuick({ fontSize: shown().fontSize + 1 }));
 els.qFontDown.addEventListener('click', () => updateQuick({ fontSize: shown().fontSize - 1 }));

@@ -22,6 +22,7 @@ Calmdown is a Chrome extension that shows `.md` files as a clean, easy to read p
 - A table of contents on the side that follows you as you scroll. You can fold any section by its heading, and Calmdown remembers what you folded in each file.
 - Eight themes: GitHub, Dracula and Monokai (each in light and dark), Sepia and System. Three page widths and adjustable text size.
 - Text style: Google Fonts for text and headings, line, letter and paragraph spacing, and colours for headings, bold text, inline code and highlights.
+- Your own themes: save a theme together with your text size, page width, text style and colours under a name. It then shows up in both theme lists, so you can switch your whole look in one click.
 - Focus mode hides the top and bottom bars and fades everything except the section or paragraph you are reading.
 - Read aloud reads the page to you, starting from where you are, and highlights the part being read. Code, math and diagrams are skipped. It uses the voices already on your computer, and you can pick the voice and speed in Settings.
 - A bottom bar shows the number of headings, characters, reading time, task progress and how far you have read. Its quick buttons (focus mode, read aloud, theme, width, text size, table of contents) change only the current tab.
@@ -109,8 +110,16 @@ If you downloaded a ZIP, replace the files in your old folder with the ones from
 
 1. Click the Calmdown button in the toolbar to open it.
 2. Open the menu (top left) and choose **Open file** or **Open folder**, or drop a `.md` file onto the page. `test/fixtures-sample.md` is a good file to start with.
-3. Open **Settings** from the same menu to change the theme, fonts, spacing, colours, focus mode and read aloud voice.
+3. Open **Settings** from the same menu to change the theme, fonts, spacing, colours, focus mode and read aloud voice. Picking a theme resets the text size, page width, fonts, spacing and colours to that theme's defaults. Changes you make after that stay until you pick a theme again.
 4. To listen instead of read, click **Read aloud** in the bottom bar. The same button pauses and resumes, and **Stop** ends it.
+
+**Your own themes**
+
+1. In **Settings**, pick a theme and set the text size, page width, text style and colours the way you like.
+2. Click **Save as theme** under the theme list and give it a name.
+3. Your theme now appears under **My themes** in the theme list in Settings and in the bottom bar.
+
+While one of your themes is selected in Settings, any change to its text size, width, text style or colours is saved to that theme. Use **Rename** or **Delete** under the theme list to manage it. To change which built-in theme it is based on, pick that theme, set things up again and save it under the same name.
 
 To read an online Markdown file, just open its address, for example a raw file on GitHub. Calmdown opens it and asks for access to that site the first time.
 
